@@ -1,0 +1,388 @@
+<!-- 商品详情页 -->
+<template>
+  <div class="goodDetail" >
+    <!-- 导航 -->
+    <div class="goodDetailHeader">
+      <a href="#" @click="fanhui">
+        <i class="iconfont icon-552cc14536532"></i>
+        </a>
+      {{goodDetailHeader}}
+    </div>
+
+    <!-- 详情页开始 -->
+    <div class="goodDetailList">
+    	<ul style="background: white;">
+        	<li v-for="(goodDetail,index) in goodDetails" :key="goodDetail.id">
+          		<div class="goodDetaiSwipe">
+            		<mt-swipe :auto="4000">
+              			<mt-swipe-item> <img v-bind:src="goodDetail.imgone" alt="图片"></mt-swipe-item>
+              			<mt-swipe-item> <img v-bind:src="goodDetail.imgtwo" alt="图片"></mt-swipe-item>
+              			<mt-swipe-item> <img v-bind:src="goodDetail.imgThree" alt="图片"></mt-swipe-item>
+            		</mt-swipe>
+          		</div>
+
+        		<div class="goodDetailMain">
+        			<div class="gooDetailNumber">商品编号：{{goodDetail.number}}</div>
+            		<div class="goodDetailName">{{goodDetail.name}}</div>
+            		<div class="goodDetailColor">{{goodDetail.color}}</div>
+            		<div class="goodDetailPaid">￥ {{goodDetail.price}}</div>
+                <span class="collectProduct" @click="collection"><i class="iconfont icon-shoucang"></i></span>
+              </div> 
+                                 
+          			<div class="goodDetailValue">
+            			<div class="_Value">购买数量：</div>
+            			<div class="_cartNumber" style="margin-left: 2rem;">
+              				<a href="javascript:;" @click="jian(index)" class="goodDetailReduce">-</a>
+              				<input type="text"   v-model="goodDetail.value" readonly="readonly"/>
+              				<a href="javascript:;" @click="jia(index)" class="goodDetailAdd">+</a>
+            			</div>  
+            		</div>
+
+            		<div class="goodDetailBox">
+              			<mt-navbar v-model="selected" >
+                			<mt-tab-item id="tab-container1">图文详情</mt-tab-item>
+                			<mt-tab-item id="tab-container2">宝贝详情</mt-tab-item>
+              			</mt-navbar>
+              			<mt-tab-container v-model="selected" swipeable>
+                			<mt-tab-container-item id="tab-container1">
+                  				<div class="goodDetailImg">
+                    				<p v-for="Image in goodDetail.Images">
+                      					<img v-bind:src="Image.one" alt="详情图片">
+                    				</p>
+                  				</div>
+                			</mt-tab-container-item>
+              				<mt-tab-container-item id="tab-container2">
+	              				<div class="goodDetailPeizhi">
+		                			<table style="width: 100%;border:1px solid #cccccc;margin-top: 5px;border-collapse: collapse;margin-bottom: 1.3rem;" border="1">
+		                				<tbody>
+		                					<tr v-for="Peizhi in goodDetail.Peizhis">
+			                  					<td style="width:26%;height:50px">{{Peizhi.left}}</td>
+			                  					<td style="width:80%;height:50px">{{Peizhi.right}}</td>
+		                					</tr>
+		              					</tbody>
+		            				</table>
+	          					</div>
+        					</mt-tab-container-item>    
+      					</mt-tab-container>
+    				</div>
+
+					<div class="goodDetailFooter">
+            			<div class="add">
+              				<a @click="add(index)">加入购物车</a>
+            			</div>
+            			<div class="purchase">
+              				<a @click="pay(index)">立即购买</a>
+            			</div>
+          			</div>                    
+        		</li>
+      		</ul>
+    	</div>
+    </div>
+</template>
+
+<script>
+import { MessageBox } from 'mint-ui';
+import { Toast } from 'mint-ui';
+import { Navbar, TabItem } from 'mint-ui';  
+import { TabContainer, TabContainerItem } from 'mint-ui';
+import store from '../vuex/store.js'; 
+  export default{
+    name:"goodDetail",
+    data(){
+      return{
+        active: '1',
+        goodDetailHeader:'商品详情',
+        selected:"tab-container1" ,
+        goodDetails:[]
+      }
+    },
+    mounted:function(){
+      this.getData()
+    },
+    computed:{
+      paid:function(){
+        var paid=0;
+        for(var i in this.goodDetails){
+          paid+=this.goodDetails[i].value*this.goodDetails[i].price
+        }
+        return paid
+      }
+    },
+    methods:{
+      	// 本地写个json数据文件，模拟后台将数据渲染出来
+      	getData:function(){
+        	var id = this.$route.query.id;
+          	var _this = this;
+            this.$http.get("/static/goodDetail.json").then(function(res) {           
+                for (var i = 0; i < res.body.goodDetails.length; i++) {
+                		if (res.body.goodDetails[i].id == id) {
+                			_this.goodDetails.push(res.body.goodDetails[i])
+              		  }
+            	  }
+          	})
+        },
+        //购买数量的加减
+        jia:function(index){
+            this.goodDetails[index].value++
+        },
+        jian:function(index){
+            if(this.goodDetails[index].value==1){
+            	this.goodDetails[index].value=1
+            }else{
+                this.goodDetails[index].value--
+            }
+        },
+        // 点击按钮时，首先判断该商品是否在购物车已存在，如果存在则不再加入
+        add:function(index){
+            if(this.$store.state.keyCode != -1){
+               	// console.log('this.goodDetails',this.goodDetails)
+                   var idExist=this.$store.state.carts[this.$store.state.keyCode].find((todo)=>{
+                      return todo.id==this.goodDetails[index].id;
+                    })
+                 if(!idExist){
+                        var data={
+                            // checked: false,
+                            id:this.goodDetails[index].id,
+                            name:this.goodDetails[index].name,
+                            price:this.goodDetails[index].price,
+                            imgone:this.goodDetails[index].imgone,
+                            value:this.goodDetails[index].value
+                        }
+                        this.$store.commit("addcarts",data);
+                        Toast({
+                            message:"加入购物车成功！",iconClass:"iconfont icon-goumaichenggong-copy",duration: 950
+                        })
+                    }else{
+                        MessageBox('提示', '商品已存在购物车');
+                    }
+                }else{
+                  console.log('keyCode',this.$store.state.keyCode)
+                  this.$router.push('/login');
+                }
+            },
+            //返回上一级
+            fanhui:function(){
+                this.$router.go(-1)
+            },
+            pay:function(index){
+              if(this.$store.state.keyCode != -1){
+                // Toast({ message: `成功支付了${this.paid}元`, iconClass: 'iconfont icon-goumaichenggong' ,duration: 750});
+                // alert(`成功支付了${this.paid}元`)
+                    var data= [];
+                    data.push({
+                        id:this.goodDetails[index].id,
+                        name:this.goodDetails[index].name,
+                        price:this.goodDetails[index].price,
+                        imgone:this.goodDetails[index].imgone,
+                        value:this.goodDetails[index].value  
+                    })
+                    this.$store.commit("addorder",data);
+                    this.$router.push('/orderDetail');
+              }else{
+                this.$router.push('/login');
+              }
+            },
+            collection: function(){
+              // console.log('aaaa',this.goodDetails)
+              this.$store.commit('collectProduct',this.goodDetails[0]);
+            }
+        }
+    }
+</script>
+
+<style>
+.goodDetail{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 999;
+    top: 0;
+    left: 0;
+    background: white;
+    /*background-color: #f7f7f7;*/
+}
+.goodDetail .mint-navbar .mint-tab-item.is-selected{
+    border-bottom: 3px solid red;
+    color: red;
+}
+.goodDetailList{
+    margin-bottom: 1rem;
+}
+.goodDetailHeader{
+    width: 100%;
+    z-index: 1;
+    height: 1.3rem;
+    line-height: 1.3rem;
+    font-size: 12px;
+    background: white;
+    position: fixed;
+    /*box-shadow: 0 0 10px #cecece;*/
+    text-align: left;
+    font-size: 0.52rem;
+    border-bottom: 2px solid #F4F4F4;
+   }
+.goodDetailHeader i{
+    display: block;
+    float: left;
+    height: 50px;
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
+    font-size: 0.71rem;
+    color: black;
+}
+   .goodDetaiSwipe{
+       height: 11rem;
+    /*margin-top: 0.7rem;*/
+    background: white;
+   }
+   .goodDetaiSwipe img{
+      width: 95%;
+      height: 9rem;
+      display: block;
+      /* margin-top: 60px; */
+      margin: 60px auto 60px auto;
+   }
+   .goodDetaiSwipe .mint-swipe-indicators{
+      bottom: 0.8rem;
+    }
+   .goodDetailMain{
+       /* height: 1.8rem; */
+      background: white;
+      border-bottom: 1px solid #cecece;
+      border-top: 1px solid #cecece;
+      padding: 0.4rem;
+    }
+   .goodDetailBox{
+       height: 1px;
+   }
+   .goodDetailName{
+      color: black;
+      font-weight: 800;
+      font-size: 0.45rem
+   }
+   .goodDetailPaid{
+       color: red;
+      font-size: 0.45rem;
+   }
+   .goodDetailFooter{
+      position: fixed;
+      width: 100%;
+      bottom: 0rem;
+      height: 1.3rem;
+      background: #F6F4F7;
+      border-top: 1px solid #efefef
+   }
+   .gooDetailNumber{
+       display: none
+   }
+   .add a{
+       display: block;
+      width:50%;
+      height: 1.3rem;
+      line-height:1.3rem;
+      text-align: center;
+      background: #FF9800;
+      color: white;
+      font-size: 0.45rem;
+      float: left;
+   }
+   .purchase a{
+       float: left;
+      display: block;
+      width:50%;
+      height: 1.3rem;
+      line-height:1.3rem;
+      text-align: center;
+      color: white;
+      font-size: 0.45rem;
+      background: #E3211E;
+   }
+   .goodDetailImg{
+        margin-top: 4px;
+      margin-bottom: 6px;
+   }
+   .goodDetailImg  img{
+       width: 100%;
+       height: auto;
+       display: block;
+   }
+   table td{
+       font-size: 0.31rem;
+       text-align: center;
+       color: #000
+   }
+   .goodDetailValue{
+        height: 1rem;
+        border-bottom: 1px solid #cecece;
+        padding: 0.4rem;
+   }
+   .goodDetailAdd{
+        width: 1rem;
+        height: 0.8rem;
+        line-height: 0.8rem;
+        display: block;
+        background: white;
+        float: left;
+        border: 1px solid #b2b2b2;
+        border-left: none;
+        text-align: center;
+        font-size: 0.5rem;
+        color: black;
+   }
+   .goodDetailReduce{
+        width: 1rem;
+        height: 0.8rem;
+        line-height: 0.8rem;
+        display: block;
+        background: white;
+        float: left;
+        border: 1px solid #b2b2b2;
+        border-right: none;
+        text-align: center;
+        font-size: 0.5rem;
+        color: black;
+   }
+   ._cartNumber input{
+        width: 1rem;
+        height: 0.8rem;
+        line-height: 0.8rem;
+        float: left;
+        border: 1px solid #b2b2b2;
+        text-align: center;
+        color: black;
+   }
+   ._Value{
+       float: left;
+       margin-top: 0.2rem;
+       font-size: 0.4rem;
+   }
+   .goodDetailPeizhi{
+    background: white;
+  }
+  .goodDetail table td{
+    font-size: 0.4rem;
+  }
+   .goodDetailColor{
+       display: none
+   }
+   .goodDetail .mint-tab-item-label{
+      font-size:0.45rem;
+  }
+   .collectProduct{
+       position: absolute;
+       display: block;
+       right: 0.8rem;
+       top: 11.6rem;
+       /*font-size: 1rem;*/
+   }
+   .iconfont{
+      font-size: 0.45rem;
+   }
+   .mint-msgbox{
+     font-size: 0.52rem;
+   }
+   .mint-msgbox-title{
+      font-size: 0.52rem;
+      font-weight: 500;
+   }
+</style>
